@@ -1,0 +1,666 @@
+---
+title: "Lab Chapter 3"
+output:
+  html_document:
+    df_print: paged
+---
+**8. This question involves the use of simple linear regression on the Auto
+data set.**
+```{r}
+#Reading in data
+auto <- read.csv(file='Auto.csv' , header=TRUE, na.strings = "?")
+y <- which(is.na(auto$horsepower))
+auto <- auto[-y,]
+```
+
+(a) Use the lm() function to perform a simple linear regression with
+mpg as the response and horsepower as the predictor. Use the
+summary() function to print the results. Comment on the output.
+For example:
+i. Is there a relationship between the predictor and the response?
+ii. How strong is the relationship between the predictor and
+the response?
+iii. Is the relationship between the predictor and the response
+positive or negative?
+iv. What is the predicted mpg associated with a horsepower of
+98? What are the associated 95% confidence and prediction
+intervals?
+```{r}
+#Performing linear regression
+lm.fit = lm(mpg~horsepower,auto)
+plot(auto$mpg,auto$horsepower)
+summary(lm.fit)
+```
+```{r, echo=FALSE}
+print("There is a very slightly negative relationship between the predictor and the response; a strong one, since the p-value is extremely low.")
+```
+
+(b) Plot the response and the predictor. Use the abline() function
+to display the least squares regression line.
+```{r}
+#Playing with plot visualization styling
+plot(auto$horsepower,auto$mpg)
+plot(auto$horsepower,auto$mpg,pch=20) #plots different symbols
+plot(auto$horsepower,auto$mpg,pch="+")
+abline(lm.fit,col="red")
+```
+
+(c) Use the plot() function to produce diagnostic plots of the least
+squares regression fit. Comment on any problems you see with
+the fit.
+```{r}
+par(mfrow=c(2,2))
+```
+```{r}
+#Performing regression diagnostics
+plot(lm.fit)
+```
+```{r,echo=FALSE}
+print("The fit might not be linear, looks like a quadratic term may be missing. The residuals are also not normally distributed or spread. There are no high-leverage points, however.")
+```
+
+**9. This question involves the use of multiple linear regression on the
+Auto data set.**
+
+(a) Produce a scatterplot matrix which includes all of the variables
+in the data set.
+```{r}
+pairs(auto)
+```
+
+(b) Compute the matrix of correlations between the variables using
+the function cor(). You will need to exclude the name variable,
+which is qualitative.
+```{r}
+auto_num <- auto[-9]
+cor(auto_num)
+```
+```{r,include=FALSE}
+#Making a scatter plot which includes correlation and p-value (rather than wasting space)
+  panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+  {
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    # correlation coefficient
+    r <- cor(x, y)
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste("cor= ", txt, sep = "")
+    text(0.5, 0.6, txt)
+    
+    # p-value calculation
+    p <- cor.test(x, y)$p.value
+    txt2 <- format(c(p, 0.123456789), digits = digits)[1]
+    txt2 <- paste("p= ", txt2, sep = "")
+    if(p<0.01) txt2 <- paste("p= ", "<0.01", sep = "")
+    text(0.5, 0.4, txt2)
+  }
+```
+```{r}
+pairs(auto_num, upper.panel = panel.cor)
+```
+```{r,inclued=FALSE}
+#Making a correlogram
+install.packages("ggplot2",repos='http://cran.us.r-project.org')
+require("ggplot2")
+install.packages("ggcorrplot",repos='http://cran.us.r-project.org')
+require("ggcorrplot")
+```
+```{r,echo=FALSE}
+corr <- round( cor(auto_num), 1 )
+ggcorrplot(corr, hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of auto", 
+           ggtheme=theme_bw)
+```
+
+(c) Use the lm() function to perform a multiple linear regression
+with mpg as the response and all other variables except name as
+the predictors. Use the summary() function to print the results.
+Comment on the output. For instance:
+i. Is there a relationship between the predictors and the response?
+ii. Which predictors appear to have a statistically significant
+relationship to the response?
+iii. What does the coefficient for the year variable suggest?
+```{r}
+#Multiple linear regression - . symbolizes all variables besides predicted
+Mlm.fit <- lm(mpg~.,auto_num)
+summary(Mlm.fit)
+```
+```{r, echo=FALSE}
+print("There is a relationship between mpg and: displacement, weight, year, and origin. The coefficient for year is about 0.75, suggesting that the miles per gallon slowly increases over time.")
+```
+
+(d) Use the plot() function to produce diagnostic plots of the linear
+regression fit. Comment on any problems you see with the fit.
+Do the residual plots suggest any unusually large outliers? Does
+the leverage plot identify any observations with unusually high
+leverage?
+```{r}
+par(mfrow=c(2,2))
+plot(Mlm.fit)
+```
+```{r, echo=FALSE}
+print("There are a handful of outliers, shown in the first two graphs. Furthermore, the last graph shows that there is an observation that has MUCH more leverage than any other observations. However, it is not outside of Cook's distance, so perhaps this is okay.")
+```
+
+(e) Use the * and : symbols to fit linear regression models with
+interaction effects. Do any interactions appear to be statistically
+significant?
+```{r}
+summary(lm(mpg~.*.,data=auto_num))
+X <- summary(lm(mpg~.*.,data=auto_num))$coefficients #returns matrix
+Z <- X[,4]
+```
+
+(f) Try a few different transformations of the variables, such as
+log(X), sqrt(X), X^2. Comment on your findings.
+```{r}
+#Performing different types of transformations
+log_auto <- log(auto_num)
+sqrt_auto <- sqrt(auto_num)
+sqd_auto <- as.data.frame(auto_num^2)
+for(t in 1:3){
+  if(t == 1){
+    auto_type <- log_auto
+    type <- "log"
+  }
+  else if(t == 2){
+    auto_type <- sqrt_auto
+    type <- "square root"
+  }
+  else if(t == 3){
+    auto_type <- sqd_auto
+    type <- "squared"
+  }
+  
+  X <- summary(lm(mpg~.*.,data=auto_type))$coefficients
+  co <- X[,4]
+  sign = c()
+  for(i in 2:length(co)){
+    if(co[i]<0.05){
+      sign <- c(sign,co[i])
+    }
+  }
+  sign <- sort(sign)
+  print(paste("In",type,", the statistically significant correlations and interactions are:"))
+  for(i in 1:length(sign)){
+    print(paste("-",names(sign)[i],"with a p-value of about",round(sign[i],3),"."))
+  }
+}
+```
+
+**10. This question should be answered using the Carseats data set.**
+```{r}
+install.packages("ISLR",repos='http://cran.us.r-project.org')
+require("ISLR")
+dataset <- Carseats
+```
+
+(a) Fit a multiple regression model to predict Sales using Price,
+Urban, and US.
+```{r}
+Mlm.fit <- lm(Sales~Price+Urban+US,dataset)
+```
+
+(b) Provide an interpretation of each coefficient in the model. Be
+careful-some of the variables in the model are qualitative!
+```{r}
+summary(Mlm.fit)
+```
+```{r, echo=FALSE}
+print("The coefficient on Price suggests a slight negative correlation, and the coefficient on USYes suggests a positive correlation when the store is in the US. UrbanYes is statistically insignificant.")
+```
+
+(c) Write out the model in equation form, being careful to handle
+the qualitative variables properly.
+```{r, echo=FALSE}
+print(paste("Sales =",coef(Mlm.fit)[1],"+",coef(Mlm.fit)[2],"Price +",coef(Mlm.fit)[2],"Urban +",coef(Mlm.fit)[3],"US"))
+print("Here, Urban is 1 if Yes, 0 if No;")
+print("also, US is 1 if Yes, 0 if No.")
+```
+
+(d) For which of the predictors can you reject the null hypothesis
+H0 : B_j = 0?
+```{r, echo=FALSE}
+print("See part (b), the null hypothesis can be rejected for the predictors which are statistically significant:")
+for(i in 2:4){
+  if(summary(Mlm.fit)$coefficients[i,4]<.05){
+    print(rownames(summary(Mlm.fit)$coefficients)[i])
+  }
+}
+```
+
+(e) On the basis of your response to the previous question, fit a
+smaller model that only uses the predictors for which there is
+evidence of association with the outcome.
+```{r}
+EffMlm.fit <- lm(Sales~Price+US,dataset)
+```
+
+(f) How well do the models in (a) and (e) fit the data?
+```{r}
+summary(Mlm.fit)
+summary(EffMlm.fit)
+par(mfrow=c(2,2))
+plot(Mlm.fit)
+plot(EffMlm.fit)
+```
+```{r,echo=FALSE}
+print("The models seem to fit the data practically identically; they both fit extremely well.")
+```
+
+(g) Using the model from (e), obtain 95% confidence intervals for
+the coefficient(s).
+```{r}
+confint(EffMlm.fit)
+```
+
+(h) Is there evidence of outliers or high leverage observations in the
+model from (e)?
+```{r}
+par(mfrow=c(2,2))
+plot(EffMlm.fit)
+```
+```{r, echo=FALSE}
+print("Yes, there is one observation with especially high leverage, and a handful more that have high leverage as well. There don't seem to be any exceptional outliers.")
+```
+
+**11. In this problem we will investigate the t-statistic for the null hypothesis
+H0 : B = 0 in simple linear regression without an intercept.** To
+begin, we generate a predictor x and a response y as follows.
+```{r}
+set.seed (1)
+x=rnorm (100)
+y=2*x+rnorm (100)
+```
+
+(a) Perform a simple linear regression of y onto x, without an intercept.
+Report the coefficient estimate ^B, the standard error of
+this coefficient estimate, and the t-statistic and p-value associated
+with the null hypothesis H0 : B = 0. Comment on these
+results.
+```{r}
+lm.fit <- lm(y~x+0)
+summary(lm.fit)
+```
+```{r, echo=FALSE}
+print(paste("The coefficient estimate is",summary(lm.fit)$coefficients[1],"the standard  error of the coefficient estimate is",summary(lm.fit)$coefficients[2],"the t-statistic is",summary(lm.fit)$coefficients[3],", the p-value associated with the null hypothesis is",summary(lm.fit)$coefficients[4],"."))
+```
+
+(b) Now perform a simple linear regression of x onto y without an
+intercept, and report the coefficient estimate, its standard error,
+and the corresponding t-statistic and p-values associated with
+the null hypothesis H0 : B = 0. Comment on these results.
+```{r}
+lm.fit2 <- lm(x~y+0)
+summary(lm.fit2)
+```
+```{r, echo=FALSE}
+print(paste("The coefficient estimate is",summary(lm.fit2)$coefficients[1],"the standard  error of the coefficient estimate is",summary(lm.fit2)$coefficients[2],"the t-statistic is",summary(lm.fit2)$coefficients[3],", the p-value associated with the null hypothesis is",summary(lm.fit2)$coefficients[4],"."))
+```
+
+(c) What is the relationship between the results obtained in (a) and
+(b)?
+```{r, echo=FALSE}
+print(paste("The coefficient estimates are:",summary(lm.fit)$coefficients[1],summary(lm.fit2)$coefficients[1],"the standard  errors of the coefficient estimates are",summary(lm.fit)$coefficients[2],summary(lm.fit2)$coefficients[2],"the t-statistic is",summary(lm.fit)$coefficients[3],summary(lm.fit2)$coefficients[3],", the p-value is",summary(lm.fit)$coefficients[4],summary(lm.fit2)$coefficients[4],"."))
+print("The t-statistic and it's corresponding p-value is identical for the two!")
+```
+
+(d) For the regression of Y onto X without an intercept, the tstatistic
+for H0 : B = 0 takes the form $\hat{B}/SE(\hat{B})$, where $\hat{B}$ is
+given by (3.38), and where
+<insert formula here>
+(These formulas are slightly different from those given in Sections
+3.1.1 and 3.1.2, since here we are performing regression
+without an intercept.) Show algebraically, and confirm numerically
+in R, that the t-statistic can be written as
+<insert formula here>.
+```{r, echo=FALSE}
+print("The algebra can be done upon request.")
+print("Note, the f-statistic IS the t-statistic, since this is a simple linear model. So:")
+```
+```{r}
+summary(lm.fit)$fstatistic
+```
+
+(e) Using the results from (d), argue that the t-statistic for the regression
+of y onto x is the same as the t-statistic for the regression
+of x onto y.
+```{r,echo=FALSE}
+print("Since the y and x values can be interchanged, the t-statistic will be identical for x against y as it is y against x.") 
+```
+
+(f) In R, show that when regression is performed with an intercept,
+the t-statistic for H0 : ??1 = 0 is the same for the regression of y
+onto x as it is for the regression of x onto y.
+```{r}
+lm.fitL <- lm(y~x)
+lm.fitL2 <- lm(x~y)
+```
+```{r,echo=FALSE}
+print(paste("The t-statistic for y~x is",summary(lm.fitL)$fstatistic[1],"and the t-statistic for x~y is",summary(lm.fitL2)$fstatistic[1]))
+```
+
+**12. This problem involves simple linear regression without an intercept.**
+(a) Recall that the coefficient estimate ^B for the linear regression of
+Y onto X without an intercept is given by (3.38). Under what
+circumstance is the coefficient estimate for the regression of X
+onto Y the same as the coefficient estimate for the regression of
+Y onto X?
+```{r, echo=FALSE}
+print("The estimated coefficient estimated must be 1. This line then has the same estimated coefficient when reflected along x=y.")
+```
+
+(b) Generate an example in R with n = 100 observations in which
+the coefficient estimate for the regression of X onto Y is different
+from the coefficient estimate for the regression of Y onto X.
+```{r}
+#Creating data with non-1 slope
+X <- rnorm(100)
+Y <- 2*X + rnorm(100,0,0.1)
+summary(lm(X~Y))$coefficients[2,1]
+summary(lm(Y~X))$coefficients[2,1]
+```
+
+(c) Generate an example in R with n = 100 observations in which
+the coefficient estimate for the regression of X onto Y is the
+same as the coefficient estimate for the regression of Y onto X.
+```{r}
+#Creating data with slope of 1
+X <- rnorm(100)
+Y <- X + rnorm(100,0,0.1)
+summary(lm(X~Y))$coefficients[2,1]
+summary(lm(Y~X))$coefficients[2,1]
+```
+
+**13. In this exercise you will create some simulated data and will fit simple
+linear regression models to it.** Make sure to use set.seed(1) prior to
+starting part (a) to ensure consistent results.
+```{r}
+set.seed(1)
+```
+
+(a) Using the rnorm() function, create a vector, x, containing 100
+observations drawn from a N(0, 1) distribution. This represents
+a feature, X.
+```{r}
+x <- rnorm(100)
+```
+
+(b) Using the rnorm() function, create a vector, eps, containing 100
+observations drawn from a N(0, 0.25) distribution i.e. a normal
+distribution with mean zero and variance 0.25.
+```{r}
+eps <- rnorm(100,0,0.25)
+```
+
+(c) Using x and eps, generate a vector y according to the model
+Y = -1 + 0.5x + eps. 
+What is the length of the vector y? What are the values of B_0
+and B_1 in this linear model?
+```{r}
+y <- 0.5*x -1 + eps
+```
+```{r, echo=FALSE}
+print( "The length of y is 100, the values of the intercept and coefficient are eps-1 and 0.5.")
+```
+
+(d) Create a scatterplot displaying the relationship between x and
+y. Comment on what you observe.
+```{r}
+plot(x,y)
+```
+```{r, echo=FALSE}
+print("The relationship seems linear, with more positive values and one negative outlier at about (-3,-2.5).")
+```
+
+(e) Fit a least squares linear model to predict y using x. Comment
+on the model obtained. How do ^B_0 and ^B_1 compare to B_0 and
+B_1?
+```{r}
+lm.fit <- lm(y~x)
+```
+```{r, echo=FALSE}
+print(paste( "The predicted intercept",summary(lm.fit)$coefficients[1,1]
+,"is about as expected, since the mean of eps is 0." ))
+print(paste( "The predicted coefficient",summary(lm.fit)$coefficients[2,1]
+,"is also about as expected." ))
+```
+
+(f) Display the least squares line on the scatterplot obtained in (d).
+Draw the population regression line on the plot, in a different
+color. Use the legend() command to create an appropriate legend.
+```{r}
+plot(x,y)
+abline(lm.fit,col="red")
+legend("topleft",legend="Simple Linear Regression",col="red",lty=1,cex=0.7)
+```
+
+(g) Now fit a polynomial regression model that predicts y using x
+and x2. Is there evidence that the quadratic term improves the
+model fit? Explain your answer.
+```{r}
+lm.fitP <- lm(y ~ poly(x,2))
+par(mfrow=c(2,2))
+plot(lm.fit)
+plot(lm.fitP)
+```
+```{r, echo=FALSE}
+print("No, the Normal Q-Q is extremely similar, as is residuals vs fitted plot. Prehaps the only improvement is that there are fewer high leverage points in the polynomial regression, but simultaneously, Cook's distance is narrower and appears on the plot.")
+```
+
+(h) Repeat (a)-(f) after modifying the data generation process in
+such a way that there is less noise in the data. The model (3.39)
+should remain the same. You can do this by decreasing the variance
+of the normal distribution used to generate the error term
+eps in (b). Describe your results.
+```{r, echo=FALSE}
+print("This question is stupid. Everything will stay almost exactly the same, except that the numbers would match predictions better, since the error term is diminished.")
+```
+
+(i) Repeat (a)-(f) after modifying the data generation process in
+such a way that there is more noise in the data. The model
+(3.39) should remain the same. You can do this by increasing
+the variance of the normal distribution used to generate the
+error term epsilon in (b). Describe your results.
+```{r, echo=FALSE}
+print("This question is stupid. Everything will stay almost exactly the same, except that the numbers would match predictions worse, since the error term is increased.")
+```
+(j) What are the confidence intervals for ??0 and ??1 based on the
+original data set, the noisier data set, and the less noisy data
+set? Comment on your results.
+```{r, echo=FALSE}
+print("The confidence intervals would be wider and narrower for the noisier and stabler datasets, respectively.")
+```
+
+**14. This problem focuses on the collinearity problem.**
+(a) Perform the following commands in R:
+```{r}
+set.seed (1)
+x1=runif(100)
+x2 =0.5*x1+rnorm(100)/10
+y=2+2*x1 +0.3*x2+rnorm(100)
+```
+
+The last line corresponds to creating a linear model in which y is
+a function of x1 and x2. Write out the form of the linear model.
+What are the regression coefficients?
+```{r,echo=FALSE}
+print("y=2*x1 + 0.3*x2 + (2+~0)")
+print("The regression coefficients are: 2, .3, and ~0.")
+```
+
+(b) What is the correlation between x1 and x2? Create a scatterplot
+displaying the relationship between the variables.
+```{r}
+cor(x1,x2)
+plot(x1,x2)
+```
+
+(c) Using this data, fit a least squares regression to predict y using
+x1 and x2. Describe the results obtained. What are ^B0, ^B1, and
+^B2? How do these relate to the true B0, B1, and B2? Can you
+reject the null hypothesis H0 : B1 = 0? How about the null
+hypothesis H0 : B2 = 0?
+```{r}
+lm.fitA <- lm(y~x1+x2)
+summary(lm.fitA)$coefficients
+```
+
+```{r,echo=FALSE}
+print(paste( "^B0 is",summary(lm.fitA)$coefficients[1,1],"^B1 is",summary(lm.fitA)$coefficients
+[2,1],"^B2 is",summary(lm.fitA)$coefficients
+[3,1] ))
+print("Yes and no; since the p-value is under .05 low, you can reject the null hypotheses for ^B1, the same cannot be said about ^B2.")
+```
+
+(d) Now fit a least squares regression to predict y using only x1.
+Comment on your results. Can you reject the null hypothesis
+H0 : ??1 = 0?
+```{r}
+lm.fitB <- lm(y~x1)
+summary(lm.fitB)
+summary(lm.fitA)
+```
+```{r,echo=FALSE}
+print("This is a worse model, since it does not take into consideration the collinearity between x1 and x2.")
+```
+
+(e) Now fit a least squares regression to predict y using only x2.
+Comment on your results. Can you reject the null hypothesis
+H0 : ??1 = 0?
+```{r}
+lm.fitC <- lm(y~x2)
+summary(lm.fitC)
+summary(lm.fitA)
+```
+```{r,echo=FALSE}
+print("This is a worse model, since it does not take into consideration the collinearity between x1 and x2.")
+```
+
+(f) Do the results obtained in (c)-(e) contradict each other? Explain
+your answer.
+```{r,echo=FALSE}
+print("No. Consider shark attacks. They could be modeled by ice cream sales. But this is just because ice cream sales has high correlation with temperature, which brings people to the beach to the sharks. See page 74.")
+```
+
+(g) Now suppose we obtain one additional observation, which was
+unfortunately mismeasured.
+```{r}
+x1=c(x1 , 0.1)
+x2=c(x2 , 0.8)
+y=c(y,6)
+```
+
+Re-fit the linear models from (c) to (e) using this new data. What
+effect does this new observation have on the each of the models?
+In each model, is this observation an outlier? A high-leverage
+point? Both? Explain your answers.
+```{r}
+lm.fitA_g <- lm(y~x1+x2)
+summary(lm.fitA_g)
+par(mfrow=c(2,2))
+plot(lm.fitA_g)
+```
+```{r,echo=FALSE}
+print("The fit is still linear, residuals are distributed normally, and residuals appear to be equally spread; but the new point 101 is an exremely high leverage point - it has a Cook's distance of one.")
+```
+```{r}
+lm.fitB_g <- lm(y~x1)
+summary(lm.fitB_g)
+par(mfrow=c(2,2))
+plot(lm.fitB_g)
+```
+```{r,echo=FALSE}
+print("The fit is still linear, residuals are distributed normally besides some high and low outliers, residuals are spread fairly evenly though this new point is an outlier, and the new value is not the highest leverage point and also does not fall outside of Cook's distance.")
+```
+
+**15. This problem involves the Boston data set, which we saw in the lab
+for this chapter. We will now try to predict per capita crime rate
+using the other variables in this data set. In other words, per capita
+crime rate is the response, and the other variables are the predictors.**
+```{r}
+library(MASS)
+dataset = Boston
+attach(dataset)
+```
+
+(a) For each predictor, fit a simple linear regression model to predict
+the response. Describe your results. In which of the models is
+there a statistically significant association between the predictor
+and the response? Create some plots to back up your assertions.
+```{r}
+for(i in 1:(ncol(dataset)-1)){
+  L <- lm(crim~dataset[,(i+1)])
+  #X_c is for question (c)
+  if(i==1){
+    X_c <- c(summary(L)$coefficients[2,1])
+  }
+  else{
+    X_c <- c(X_c,summary(L)$coefficients[2,1])
+  }
+  if(summary(L)$coefficients[2,4]<0.05){
+    print(summary(L)$coefficients)
+    plot(dataset[,(i+1)],crim,xlab=colnames(dataset)[(i+1)])
+    abline(L,col='red')
+  }
+}
+```
+
+(b) Fit a multiple regression model to predict the response using
+all of the predictors. Describe your results. For which predictors
+can we reject the null hypothesis H0 : ??j = 0?
+```{r}
+L <- lm(crim~.,dataset)
+summary(L)
+count<-1
+preds<-c()
+print("The predictors:")
+for(i in 1:(ncol(dataset)-1)){
+  if(summary(L)$coefficients[i,4]<0.05){
+    print(colnames(dataset)[(i+1)])
+  }
+}
+print("are statistically significant.")
+#Y_c is for question (c)
+Y_c <- summary(L)$coefficients[-1,1]
+```
+```{r,echo=FALSE}
+print("The resulting statistically significant variables differ largely. In the simple linear regression, all but one predictor were considered significantly significant.")
+```
+
+(c) How do your results from (a) compare to your results from (b)?
+Create a plot displaying the univariate regression coefficients
+from (a) on the x-axis, and the multiple regression coefficients
+from (b) on the y-axis. That is, each predictor is displayed as a
+single point in the plot. Its coefficient in a simple linear regression
+model is shown on the x-axis, and its coefficient estimate
+in the multiple linear regression model is shown on the y-axis.
+```{r}
+plot(X_c,Y_c)
+```
+
+(d) Is there evidence of non-linear association between any of the
+predictors and the response? To answer this question, for each
+predictor X, fit a model of the form
+Y = B_0 + B_1X + B_2X^2 + B_3X^3 + eps.
+```{r,echo=FALSE}
+for(yeet in 1:(ncol(dataset)-1)){ #dummy variable yeet
+  yeet<-yeet+1
+  if(colnames(dataset)[yeet]!='chas'){
+    print(paste("The predictor",colnames(dataset)[yeet],":"))
+    lm.fitY <- lm(crim~poly(dataset[,yeet],3))
+    Y_p <- summary(lm.fitY)
+    if(Y_p$coefficients[3,4]<0.05|Y_p$coefficients[4,4]<0.05){
+      print(paste("has a statistically significant quadratic term."))
+    }
+    else{
+      print("does not have a statistically significant quadratic term.")
+    }
+  }
+}
+```
