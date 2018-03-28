@@ -542,6 +542,143 @@ whether a given suburb has a crime rate above or below the median.
 Explore logistic regression, LDA, and KNN models using various subsets
 of the predictors. Describe your findings.
 ```{r}
-#Extremely similar to question 10i
+#Extremely similar to question 10i. I wanted to leave in QDA as well, but there was an error: 'rank deficiency'
+#Creating dataset
+dataset <- Boston
+#Creating median crime rate Boolean
+crim01 <- rep(0,nrow(dataset))
+crim01[crim>median(dataset$crim)] <- 1
+#Creating transformed datasets
+log_dataset <- dataset #removing zeroes in order to take log
+log_dataset$chas[log_dataset$chas==1]<-exp(1) #Charles river variable are 0 and 1, this must be taken care of.
+log_dataset[log_dataset==0] <- 1
+log_dataset <- log(abs(log_dataset)) #must use absolute value to avoid negative inputs
+sqrt_dataset <- sqrt(abs(dataset)) #must use absolute value to avoid negative inputs
+sqr_dataset <- as.data.frame(dataset^2)
+cub_dataset <- as.data.frame(dataset^3)
+#Initializing matrix of type, method, interactions, K-value, and error rate:
+Analysis <- matrix(
+  c("","","","","",""),
+  nrow=1,
+  ncol=6)
+colnames(Analysis) <- c("Seed","Type","Method","Interactions","K-value","Error Rate")
+#Defining and recording seed used
+for(s in 1:5){
+  SEED <- s
+  set.seed(SEED)
+  #Splitting into training set and test set
+  split = sample.split(dataset$crim, SplitRatio = 4/5)
+  training_set = subset(dataset, split == TRUE)
+  test_set = subset(dataset, split == FALSE)
+  #Defining and recording which type of transformation used, as well as placing the boolean vector crim01
+  for(t in 1:1){
+    x=c() #initializes x if it isn't, so it can be removed
+    rm(x) #removes x to be used as next dataframe
+    if(t==1){
+      x <- data.frame(dataset,crim01)
+      type <- "normal"
+    }
+    else if(t==2){
+      x <- data.frame(log_dataset,crim01)
+      type <- "log"
+    }
+    else if(t==3){
+      x <- data.frame(sqrt_dataset,crim01)
+      type <- "square root"
+    }
+    else if(t==4){
+      x <- data.frame(sqr_dataset,crim01)
+      type <- "squared"
+    }
+    else{
+      x <- data.frame(cub_dataset,crim01)
+      type <- "cubed"
+    }
+    #Creating trainset and testset for transformed data
+    trainset=x[split,]
+    testset=x[!split,]
+    #Defining and recording which type of method used
+    for(m in 1:5){
+      if(m==1||m==2){
+        method <- "logistic regression"
+        k_value <- "N/A"
+        #Fitting model on train set
+        if(m %% 2 == 1){
+          glm.fitTrain=glm( x$crim01~. , x , family=binomial , subset=split )
+          is.interaction <- "No"
+        }
+        if(m %% 2 == 0){
+          glm.fitTrain=glm( x$crim01~.*. , x , family=binomial , subset=split )
+          is.interaction <- "Yes"
+        }
+        #Obtaining probabilities on test set
+        glm.probsTest=predict( glm.fitTrain , testset , type='response' )
+        #Predicting based on probabilities
+        glm.predTest=rep(0,nrow(testset))
+        glm.predTest[glm.probsTest>0.5]=1
+        #Confusion matrix
+        table(glm.predTest,testset$crim01)
+        #Error rate
+        error_rate_glm <- mean(glm.predTest!=testset$crim01)
+        err_rate <- error_rate_glm
+        #Inputting basic values wanted for analysis of models into a table 
+        Analysis <- rbind(Analysis,c(SEED,type,method,is.interaction,k_value,err_rate))
+      }
+      if(m==3||m==4){
+        method <- "linear discriminant analysis"
+        #Fitting model on train set
+        if(m %% 2 == 1){
+          lda.fitTrain=lda( x$crim01~. , x , subset=split )
+          is.interaction <- "No"
+        }
+        if(m %% 2 == 0){
+          lda.fitTrain=lda( x$crim01~.*. , x , subset=split )
+          is.interaction <- "Yes"
+        }
+        #Obtaining probabilities on test set
+        lda.probsTest=predict( lda.fitTrain , testset , type='response' )
+        #Predicting based on probabilities
+        lda.predTest <- lda.probsTest$class
+        #Confusion matrix
+        table(lda.predTest,testset$crim01)
+        #Error rate
+        error_rate_lda <- mean(lda.predTest!=testset$crim01)
+        err_rate <- error_rate_lda
+        #Inputting basic values wanted for analysis of models into a table 
+        Analysis <- rbind(Analysis,c(SEED,type,method,is.interaction,k_value,err_rate))
+      }
+      if(m==5){
+        #Preparing arguments for knn()
+        train.X <- trainset[,-9]
+        train.X <- as.matrix(train.X)
+        test.X <- testset[,-9]
+        test.X <- as.matrix(test.X)
+        train.crim01 <- trainset$crim01
+        #Using different k-values
+        for(K in 1:10){
+          k_value <- K
+          method = "k-nearest neighbors"
+          interacion <- "N/A"
+          is.interaction = "N/A"
+          #Performing K-Nearest Neighbors Analysis
+          set.seed(1)
+          knn.predTest <- knn(train.X,test.X,train.crim01,k=k_value)
+          #Confusion matrix
+          table(knn.predTest,testset$crim01)
+          error_rate_knn <- mean(knn.predTest!=testset$crim01)
+          err_rate <- error_rate_knn
+          #Inputting basic values wanted for analysis of models into a table 
+          Analysis <- rbind(Analysis,c(SEED,type,method,is.interaction,k_value,err_rate))
+        }
+      }
+    }
+  }
+}
+#Removing first (empty) row of Matrix
+Analysis <- Analysis[-1,]
+#Ordering Matrix based on error rate
+Analysis <- Analysis[ order(Analysis[,6]), ]
 ```
-
+```{r,echo=FALSE}
+print("The top predicting method is logistic regression without interactions, followed by linear discriminant analysis with interactions which is about as accurate KNN with K=5.")
+```
