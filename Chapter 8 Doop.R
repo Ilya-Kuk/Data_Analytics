@@ -7,7 +7,8 @@ library(ISLR)
 
 #Trees
 
-#Classification
+ #Classification
+
 attach(Carseats)
 High <- ifelse(Sales<=8,"No","Yes")
 Carseats <- data.frame(Carseats,High)
@@ -20,7 +21,7 @@ text(tree.carseats,pretty=0) #display node labels ##pretty=0 -> include category
 tree.carseats #output to each branch
 #estimate test error rate
 set.seed(2)
-train=sample(1:nrow(Carseats), 200) #random index of 200 from all rows of data
+train <- sample(1:nrow(Carseats), 200) #random index of 200 from all rows of data
 Carseats_test <- Carseats[-train,] #test X
 High_test <- High[-train] #test y
 tree.carseats_train <- tree(High~.-Sales, Carseats, subset=train) #train tree
@@ -57,7 +58,9 @@ tree.pred_test <- predict(prune.carseats_train, Carseats_test, type="class")
 t <- table(tree.pred_test, High_test)
 t
 print(paste("The test error is", (t[1,1]+t[2,2])/nrow(Carseats_test))) #note, increasing best will lead to larger pruned tree with worse classification accuracy
-# Regression
+
+ #Regression
+
 library(MASS)
 set.seed(1)
 #make trained tree
@@ -88,7 +91,9 @@ print("Test MSE is 25.05. Root MSE is about 5.005, indicating this model leads t
 #install.packages("randomForest",repos='http://cran.us.r-project.org')
 library(randomForest)
 set.seed(1) #from last question, MASS library already loaded, Boston already attached, training/test sets made
-#Bagging
+
+ #Bagging
+
 #making trained bagged tree
 bag.boston <- randomForest(medv~., data=Boston, subset=train, mtry=13, importance=TRUE) #mtry=13 indicates all 13 predictors should be considered - bagging
 bag.boston
@@ -107,7 +112,9 @@ plot(bag_pred_25, boston_test)
 abline(0,1)
 #checking test MSE
 mean((bag_pred_25 - boston_test)^2)
-#Random Forest (same as bagging, but with smaller mtry argument) by defualt, mtry = p/3 for regression, and sqrt(p) for classification
+
+ #Random Forest (same as bagging, but with smaller mtry argument) by defualt, mtry = p/3 for regression, and sqrt(p) for classification
+
 set.seed(1)
 rf.boston <- randomForest(medv~., data=Boston, subset=train, mtry=6, importance=TRUE)
 #checking on test set
