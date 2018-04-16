@@ -280,41 +280,95 @@ X <- table(tree.OJ_pred,Purchase_test)
 X
 ```
 ```{r,echo=FALSE}
-
 print(paste("The test error rate is",(X[1,2]+X[2,1])/nrow(OJ_test),"."))
 ```
 
 (f) Apply the cv.tree() function to the training set in order to
 determine the optimal tree size.
+```{r}
+cv.OJ_train <- cv.tree(tree.OJ_train, FUN=prune.misclass)
+cv.OJ_train
+```
+```{r,echo=FALSE}
+print(paste("The best trees seem to be of size 8 and 2, with cross-validation error of",min(cv.OJ_train$dev),"."))
+```
 
 (g) Produce a plot with tree size on the x-axis and cross-validated
 classification error rate on the y-axis.
+```{r}
+plot(cv.OJ_train$size,cv.OJ_train$dev,type='b')
+```
 
 (h) Which tree size corresponds to the lowest cross-validated classification
 error rate?
+```{r,echo=FALSE}
+print("See question (f).")
+```
 
 (i) Produce a pruned tree corresponding to the optimal tree size
 obtained using cross-validation. If cross-validation does not lead
 to selection of a pruned tree, then create a pruned tree with five
 terminal nodes.
+```{r}
+prune.OJ_train_2 <- prune.misclass(tree.OJ_train,best=2)
+prune.OJ_train_8 <- prune.misclass(tree.OJ_train,best=8)
+```
 
 (j) Compare the training error rates between the pruned and unpruned
 trees. Which is higher?
+```{r}
+Y <- table(tree.OJ_train$y,OJ_train$Purchase)
+Y
+Y_2 <- table(prune.OJ_train_2$y,OJ_train$Purchase)
+Y_2
+Y_8 <- table(prune.OJ_train_8$y,OJ_train$Purchase)
+Y_8
+```
+```{r,echo=FALSE}
+print("I may have done something wrong... The training error is 0 for unpruned tree and both pruned trees.")
+```
 
 (k) Compare the test error rates between the pruned and unpruned trees. Which is higher?
+```{r}
+prune.OJ_pred_2 <- predict(prune.OJ_train_2, newdata=OJ_test, type='class')
+X2 <- table(prune.OJ_pred_2,Purchase_test)
+X2
+prune.OJ_pred_8 <- predict(prune.OJ_train_8, newdata=OJ_test, type='class')
+X8 <- table(prune.OJ_pred_8,Purchase_test)
+X8
+```
+```{r,echo=FALSE}
+print(paste("For both pruned trees, using sizes 2 and 8, the test rror rates are,",(X2[1,2]+X2[2,1])/nrow(OJ_test),", and",(X8[1,2]+X8[2,1])/nrow(OJ_test),", respectively, whereas the unpruned tree has error rate",(X[1,2]+X[2,1])/nrow(OJ_test),". Pruning is not very useful in this example."))
+```
 
 **10. We now use boosting to predict Salary in the Hitters data set.**
+```{r}
+attach(Hitters)
+```
 
 (a) Remove the observations for whom the salary information is
 unknown, and then log-transform the salaries.
+```{r}
+Hitters <- na.omit(Hitters) #the only na values are in the Salary column anyway, this will do
+Hitters$Salary[Hitters$Salary==0] <- 1 #making all the zeroes into ones, so that log can be taken
+Hitters$Salary <- log(Hitters$Salary)
+```
 
 (b) Create a training set consisting of the first 200 observations, and
 a test set consisting of the remaining observations.
+```{r}
+train=1:200
+Hitters_train <- Hitters[train,]
+Hitters_test <- Hitters[-train,]
+```
 
 (c) Perform boosting on the training set with 1,000 trees for a range
 of values of the shrinkage parameter ??. Produce a plot with
 different shrinkage values on the x-axis and the corresponding
 training set MSE on the y-axis.
+```{r}
+
+```
 
 (d) Produce a plot with different shrinkage values on the x-axis and
 the corresponding test set MSE on the y-axis.
