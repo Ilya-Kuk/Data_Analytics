@@ -73,13 +73,14 @@ Analysis <- Analysis[ order(Analysis[,3],decreasing=FALSE), ]
 Analysis[1:10,]
 ```
 ```{r,echo=False}
+#REDO, HEATMAP SEEMS WRONG SOMEHOW...
 print("Heatmap of MSE based on number of trees and number of variables:")
 ```
 ```{r}
-plot_ly(x=r_z,y=c_z,z=Z,colors = colorRamp(c("blue", "orange")),type='heatmap',main="Test MSE Heatmap")
+plot_ly(x=r_z,y=c_z,z=Z,colors = colorRamp(c("blue", "orange")),type='heatmap')
 ```
 ```{r,echo=FALSE}
-print("By the looks of it, the more influential factor for a good prediction is the number of trees, the sweet spot is around ")
+print("By the looks of it, the more influential factor for a good prediction is the number of trees, the sweet spot is around 300-500.")
 ```
 
 **8. In the lab, a classification tree was applied to the Carseats data set after
@@ -95,48 +96,193 @@ attach(Carseats)
 train <- sample(1:nrow(Carseats), ((4/5)*nrow(Carseats)) ) #takess a random sample of 4/5 of all observations
 Carseats_train <- Carseats[train,]
 Carseats_test <- Carseats[-train,]
+Sales_test <- Carseats_test$Sales
 ```
 
 (b) Fit a regression tree to the training set. Plot the tree, and interpret
 the results. What test MSE do you obtain?
 ```{r}
-
+#fitting tree
+tree.carseats_train <- tree(Sales~., Carseats, subset=train)
+#make predictions
+tree.carseats_pred <- predict(tree.carseats_train, newdata=Carseats_test)
+x <- mean((tree.carseats_pred-Sales_test)^2)
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",x,"; Root MSE is",sqrt(x),", indicating this model leads to test predictions within around",sqrt(x),"of the true Sales value for the location."))
 ```
 
 (c) Use cross-validation in order to determine the optimal level of
 tree complexity. Does pruning the tree improve the test MSE?
+```{r}
+#see if pruning will be effective
+cv.carseats_train <- cv.tree(tree.carseats_train)
+plot(cv.carseats_train$size, cv.carseats_train$dev, type='b')
+```
+```{r,echo=FALSE}
+print(paste("Cross-validation seems to indicate that the deviation is lowest,",min(cv.carseats_train$dev),", at a size of",cv.carseats_train$size[which.min(cv.carseats_train$dev)],"."))
+```
+```{r}
+#obtaining tree pruned as per recommmendation
+prune.carseats_train <- prune.tree(tree.carseats_train, best=6)
+#obrtaining test MSE
+prune.carseats_pred <- predict(prune.carseats_train, newdata=Carseats_test)
+x1 <- mean((prune.carseats_pred-Sales_test)^2)
+```
+```{r,echo=FALSE}
+print(paste("Pruning the tree does improve the test MSE, from",x,"to",x1,"; but the improvement isn't by much."))
+```
 
 (d) Use the bagging approach in order to analyze this data. What
 test MSE do you obtain? Use the importance() function to determine
 which variables are most important.
+```{r}
+#grow training bagged tree
+bag.carseats_train <- randomForest(Sales~., data=Carseats, subset=train, mtry=ncol(Carseats)-1, importance=TRUE)
+#check test MSE
+bag.carseats_pred <- predict(bag.carseats_train, newdata=Carseats_test)
+x2 <- mean((bag.carseats_pred - Sales_test)^2)
+```
+```{r,echo=FALSE}
+print(paste("The test MSE obtained from bagging is",x2,". This is much better than the regular tree or the pruned tree"))
+```
+```{r}
+#checking variable importance
+varImpPlot(bag.carseats_train)
+importance(bag.carseats_train)
+```
+```{r,echo=FALSE}
+print(paste("Here, the first column is the mean decrease of accuracy when this variable is excluded."))
+print(paste("The second column is the total decrease of node impurity that results from splits over that variable, over all trees."))
+print(paste("The two most important variables, by far, are Price and ShelveLoc."))
+```
 
 (e) Use random forests to analyze this data. What test MSE do you
 obtain? Use the importance() function to determine which variables
-aremost important. Describe the effect of m, the number of
+are most important. Describe the effect of m, the number of
 variables considered at each split, on the error rate
 obtained.
+```{r}
+#using the method used in question 1:
+#Initializing matrix of variables sampled, tree count, and test MSE
+Analysis <- matrix(
+  c("","",""),
+  nrow=1,
+  ncol=3)
+colnames(Analysis) <- c("nVariables","nTrees","MSE")
+#Initializing matrix of test MSE for heatmap, rowname, and colname vectors
+Z <- matrix(
+  nrow=13,
+  ncol=9
+)
+rownames(Z) <- c(200,250,300,350,400,450,500,550,600,650,700,750,800)
+colnames(Z) <- c(2,3,4,5,6,7,8,9,10)
+r_z <- c()
+c_z <- c()
+#Defining and recording how many variables sampled
+for(v in 1:9){
+  V <- v+1
+  #Building colname vector
+  c_z <- c(c_z,V)
+  #Defining and recording how many trees grown
+  for(n in 1:13){
+    N <- 50*(n+3)
+    #Building rowname vector
+    if(v==1)r_z <- c(r_z,N)
+    #Growing Random Forest
+    rf.carseats_train <- randomForest(Sales~., data=Carseats, subset=train, mtry = V, ntree=N, importance=TRUE, na.action=na.omit) #there are no na's in Carseats_train and Sales... no reason na.action should be necessary?
+    #checking and recording MSE on test set
+    rf.carseats_pred <- predict(rf.carseats_train, newdata=Carseats_test)
+    E <- mean((rf.carseats_pred - Sales_test)^2)
+    #Inputting values wanted for analysis of random forests into Matrix
+    Analysis <- rbind(Analysis,c(V,N,E))
+    #Inputting value wanted for heatmap into Matrix
+    Z[n,v] <- E
+  }
+}
+#Removing first (empty) row of Matrix
+Analysis <- Analysis[-1,]
+#Ordering Matrix based on error rate
+```
+```{r,echo=False}
+print("Top 10 random forests based on MSE:")
+```
+```{r}
+Analysis <- Analysis[ order(Analysis[,3],decreasing=FALSE), ]
+Analysis[1:10,]
+```
+```{r,echo=False}
+print("Heatmap of MSE based on number of trees and number of variables:")
+```
+```{r}
+#REDO, HEATMAP SEEMS WRONG SOMEHOW...
+plot_ly(x=r_z,y=c_z,z=Z,colors = colorRamp(c("black", "yellow")),type='heatmap')
+```
+```{r,echo=FALSE}
+print("By the looks of it, the more influential factor for a good prediction is the number of trees, the sweet spot is around ")
+```
 
 **9. This problem involves the OJ data set which is part of the ISLR
 package.**
+```{r}
+attach(OJ)
+```
 
 (a) Create a training set containing a random sample of 800 observations,
 and a test set containing the remaining observations.
+```{r}
+train <- sample(nrow(OJ), 800)
+OJ_train <- OJ[train,]
+OJ_test <- OJ[-train,]
+Purchase_test <- OJ_test$Purchase
+```
 
 (b) Fit a tree to the training data, with Purchase as the response
 and the other variables as predictors. Use the summary() function
 to produce summary statistics about the tree, and describe the
 results obtained. What is the training error rate? How many
 terminal nodes does the tree have?
+```{r}
+#grow a tree
+tree.OJ_train <- tree(Purchase~., OJ, subset=train)
+#summary of tree
+summary(tree.OJ_train)
+```
+```{r,echo=FALSE}
+print(paste("The training error rate is",(summary(tree.OJ_train)$misclass[1]/summary(tree.OJ_train)$misclass[2]),", and the tree has",summary(tree.OJ_train)$size," terminal nodes."))
+```
 
 (c) Type in the name of the tree object in order to get a detailed
 text output. Pick one of the terminal nodes, and interpret the
 information displayed.
+```{r}
+print(tree.OJ_train)
+```
+```{r,echo=FALSE}
+print("The left-most leaf, here titled node 4), classifies all observations with LoyalCH<.50395 and also LoyalCH<.051325 to be MM. 62 Observations fall under this split, with a cv error of 10.240. The probability of correct classification is .98387.")
+```
 
 (d) Create a plot of the tree, and interpret the results.
+```{r}
+plot(tree.OJ_train)
+text(tree.OJ_train)
+```
+```{r,echo=FALSE}
+print("It seems that the top two predictors used are LoyaLCH and PriceDiff. ")
+```
 
 (e) Predict the response on the test data, and produce a confusion
 matrix comparing the test labels to the predicted test labels.
 What is the test error rate?
+```{r}
+tree.OJ_pred <- predict(tree.OJ_train, newdata=OJ_test, type='class')
+X <- table(tree.OJ_pred,Purchase_test)
+X
+```
+```{r,echo=FALSE}
+
+print(paste("The test error rate is",(X[1,2]+X[2,1])/nrow(OJ_test),"."))
+```
 
 (f) Apply the cv.tree() function to the training set in order to
 determine the optimal tree size.
