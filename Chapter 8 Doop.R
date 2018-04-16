@@ -150,7 +150,7 @@ dev.off()
 boost_pred <- predict(boost.boston, newdata=Boston[-train,], n.trees=5000)
 mean((boost_pred-boston_test)^2)
 print("The test MSE is 11.8, similar to the test MSE for random forests and superior to that for bagging.")
-#Dooping around the shrinkage parameter. Defaule is 0.001
+#Dooping around the shrinkage parameter. Default is 0.001
 boost.boston_0.2 <- gbm(medv~., data=Boston[train,], distribution="gaussian", n.trees=5000, interaction.depth=4, shrinkage=0.2, verbose=F)
 #checking test set MSE
 boost_pred_0.2 <- predict(boost.boston_0.2, newdata=Boston[-train,], n.trees=5000)

@@ -363,11 +363,40 @@ Hitters_test <- Hitters[-train,]
 ```
 
 (c) Perform boosting on the training set with 1,000 trees for a range
-of values of the shrinkage parameter ??. Produce a plot with
-different shrinkage values on the x-axis and the corresponding
-training set MSE on the y-axis.
+of values of the shrinkage parameter $\lambda$. Produce a plot with
+different shrinkage values on the $x$-axis and the corresponding
+training set MSE on the $y$-axis.
 ```{r}
+#Initializing a Matrix of $\lambda$, test MSE, training MSE
+Matrix <- matrix(
+  nrow=1,
+  ncol=3
+)
+colnames(Matrix) <- c("lamda","test_MSE","training_MSE")
+#Defining and recording lambda
+for(i in 1:7){
+  ifelse(i%%2==1,{
+    lambda <- (.001)*10^((i-1)/2)
+  },
+  {
+    lambda <- (.005)*10^(i/2)
+  })
+  #grow boosted tree
+  boost.Hitters_train <- gbm(Salary~., data=Hitters_train, distribution="gaussian", n.trees=1000, interaction.depth=1, shrinkage=lambda)
+  #obtain training set MSE
+  boost_train_pred <- predict(boost.Hitters_train, newdata=Hitters_train, n.trees=1000)
+  MSE_train <- mean((boost_train_pred-Hitters_train$Salary)^2)
+  #obtaining test set MSE
+  boost_pred <- predict(boost.Hitters_train, newdata=Hitters_test, n.trees=1000)
+  MSE_test <- mean((boost_pred-Hitters_test$Salary)^2)
+  #inputting wanted information into Matrix for plotting
+  Matrix <- rbind(Matrix,c(lambda,MSE_test,MSE_train))
+}
+#Removing first row
+Matrix <- Matrix[-1,]
+Matrix
 
+##MAKE PLOT
 ```
 
 (d) Produce a plot with different shrinkage values on the x-axis and
