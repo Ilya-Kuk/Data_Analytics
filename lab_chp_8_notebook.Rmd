@@ -379,7 +379,7 @@ for(i in 1:7){
     lambda <- (.001)*10^((i-1)/2)
   },
   {
-    lambda <- (.005)*10^(i/2)
+    lambda <- (.005)*10^(i/2-1)
   })
   #grow boosted tree
   boost.Hitters_train <- gbm(Salary~., data=Hitters_train, distribution="gaussian", n.trees=1000, interaction.depth=1, shrinkage=lambda)
@@ -392,35 +392,97 @@ for(i in 1:7){
   #inputting wanted information into Matrix for plotting
   Matrix <- rbind(Matrix,c(lambda,MSE_test,MSE_train))
 }
-#Removing first row
-Matrix <- Matrix[-1,]
+Matrix <- Matrix[-1,] #Removing first row
+Matrix <- Matrix[order(Matrix[,1]),] #Put matrix in order by lambda
 Matrix
-
-##MAKE PLOT
+#Make plot
+plot(Matrix[,1],Matrix[,3],type='b',main="Train MSE by Lambda")
 ```
 
 (d) Produce a plot with different shrinkage values on the x-axis and
 the corresponding test set MSE on the y-axis.
+```{r}
+#Make plot
+plot(Matrix[,1],Matrix[,2],type='b',main="Test MSE by Lambda")
+```
 
 (e) Compare the test MSE of boosting to the test MSE that results
 from applying two of the regression approaches seen in
 Chapters 3 and 6.
+```{r}
+#Performing Multiple Linear and Multiple Linear with Interaction
+#Polynomial Regression
+mlm.OJ_train <- lm(Hitters_train$Salary~., Hitters_train)
+mlm.OJ_train <- lm(Hitters_train$Salary~AtBat+Hits+Walks+Years+CWalks+PutOuts+Assists, Hitters_train)
+#Testing MSE
+mlm.OJ_pred <- predict(mlm.OJ_train, newdata=Hitters_test)
+mlm.MSE <- mean((mlm.OJ_pred-Hitters_test$Salary)^2)
+#Multiple Linear with Interaction
+Mlm.OJ_train <- lm(Hitters_train$Salary~.*., Hitters_train)
+co <- summary(Mlm.OJ_train)$coefficients #look at coefficient table
+co <- co[order(co[,4]),] #look at top p-value predictors
+Mlm.OJ_train <- lm(Hitters_train$Salary~HmRun:CWalks+AtBat:Hits+Years:CHmRun+AtBat+CHmRun:Division+CWalks:NewLeague+RBI:NewLeague+CAtBat:CWalks+CRuns:CWalks+RBI:NewLeague+CRBI:Division+CAtBat:PutOuts+CHits:CRuns+League:Division+Runs:Years+HmRun:Years, Hitters_train) #creating new model using good predictors
+#Testing MSE
+Mlm.OJ_pred <- predict(Mlm.OJ_train, newdata=Hitters_test)
+Mlm.MSE <- mean((Mlm.OJ_pred-Hitters_test$Salary)^2)
+```
+```{r,echo=FALSE}
+print(paste("The boosted tree had a best test MSE of",Matrix[5,2],", whereas the multiple linear regression had a test MSE of",mlm.MSE,", and the multiple linear regression with interaction had a test MSE of",Mlm.MSE,"."))
+```
 
 (f) Which variables appear to be the most important predictors in
 the boosted model?
+```{r}
+summary(boost.Hitters_train)
+```
+```{r,echo=FALSE}
+print("The most important variables in the boosted models are Cruns, followed by Walks, then AtBat, PutOuts, Assists, and so forth.")
+```
 
 (g) Now apply bagging to the training set. What is the test set MSE
-for this approach?\
+for this approach?
+```{r}
+#making training bagged tree
+bag.OJ_train <- randomForest(Hitters_train$Salary~., data=Hitters_train, mtry=(ncol(Hitters)-1))
+bag.OJ_train
+#checking test MSE
+bag.OJ_pred <- predict(bag.OJ_train, Hitters_test)
+bag.MSE <- mean((bag.OJ_pred-Hitters_test$Salary)^2)
+```
+```{r,echo=FALSE}
+print(paste("The test set for the bagged tree is",bag.MSE,". This is just a bit better than the boosted tree, which had MSE",Matrix[5,2],"."))
+```
 
 **11. This question uses the Caravan data set.**
+```{r}
+attach(Caravan)
+```
 
 (a) Create a training set consisting of the first 1,000 observations,
 and a test set consisting of the remaining observations.
+```{r}
+train=1:1000
+Caravan_train <- Caravan[train,]
+Caravan_test <- Caravan[-train,]
+Purchase_test <- Caravan_test$Purchase
+```
 
 (b) Fit a boosting model to the training set with Purchase as the
 response and the other variables as predictors. Use 1,000 trees,
 and a shrinkage value of 0.01. Which predictors appear to be
 the most important?
+```{r}
+#prepare response vector, as needed for gbm()
+Purch <- ifelse(Purchase=="Yes",1,0)
+Purch_train <- Purch[train]
+Purch_test <- Purch[-train]
+#grow boosted tree
+boost.Caravan_train <- gbm(Purch_train~.-Purchase, data=Caravan_train, distribution="bernoulli", n.trees=1000, interaction.depth=1, shrinkage=.01)
+summary(boost.Caravan_train)
+```
+```{r,echo=FALSE}
+print("The top predictors are PPERSAUT, MKOOPKLA, MOPLHOOG, MBERMIDD, PBRAND, ABRAND, and so on.")
+```
 
 (c) Use the boosting model to predict the response on the test data.
 Predict that a person will make a purchase if the estimated probability
@@ -429,10 +491,46 @@ What fraction of the people predicted to make a purchase
 do in fact make one? How does this compare with the results
 obtained from applying KNN or logistic regression to this data
 set?
+```{r}
+boost.Caravan_prob <- predict(boost.Caravan_train, newdata=Caravan_test, n.trees=1000, type='response')
+boost.Caravan_pred <- ifelse(boost.Caravan_prob>.2,"Yes","No")
+L <- table(boost.Caravan_pred,Purchase_test)
+L
+```
+```{r,echo=FALSE}
+print(paste(L[2,2]/(L[2,2]+L[2,1])," of the people predicted to make a purchase made a purchase."))
+```
+```{r}
+#creating logistic regression
+logistic.Caravan_train <- glm(Purchase~., data=Caravan_train, family=binomial)
+summary(logistic.Caravan_train)
+#improving logistic regression
+logistic.Caravan_train <- glm(Purchase~MGEMOMV+MGODRK+MGODOV+MRELOV+PPERSAUT, data=Caravan_train, family=binomial)
+#obtaining test error rate
+logistic.Caravan_probs <- predict(logistic.Caravan_train, newdata=Caravan_test, type='response')
+contrasts(Purchase)
+logistic.Caravan_pred <- ifelse(logistic.Caravan_probs>.5,"Yes","No")
+L1 <- table(logistic.Caravan_pred,Purchase_test)
+#preparing response factor
+Pur_train <- factor(Caravan_train$Purchase)
+#creating KNN
+knn.Caravan_pred <- knn(Caravan_train[,-86], Caravan_test[,-86], Pur_train, k=1) #don't include Purchase variable
+L2 <- table(knn.Caravan_pred,Purchase_test)
+```
+```{r}
+L
+(L[1,1]+L[2,2])/(L[1,1]+L[1,2]+L[2,1]+L[2,2])
+L1
+(L1[1])/(L1[1]+L1[2])
+L2
+(L2[1,1]+L2[2,2])/(L2[1,1]+L2[1,2]+L2[2,1]+L2[2,2])
+```
+```{r,echo=FALSE}
+print("Interesting: Logistic regression predicted all would not purchase, and had the least error rate.")
+```
 
 12. Apply boosting, bagging, and random forests to a data set of your
 choice. Be sure to fit the models on a training set and to evaluate their
 performance on a test set. How accurate are the results compared
 to simple methods like linear or logistic regression? Which of these
 approaches yields the best performance?
-
