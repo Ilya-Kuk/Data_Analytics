@@ -338,7 +338,7 @@ X8 <- table(prune.OJ_pred_8,Purchase_test)
 X8
 ```
 ```{r,echo=FALSE}
-print(paste("For both pruned trees, using sizes 2 and 8, the test rror rates are,",(X2[1,2]+X2[2,1])/nrow(OJ_test),", and",(X8[1,2]+X8[2,1])/nrow(OJ_test),", respectively, whereas the unpruned tree has error rate",(X[1,2]+X[2,1])/nrow(OJ_test),". Pruning is not very useful in this example."))
+print(paste("For both pruned trees, using sizes 2 and 8, the test error rates are,",(X2[1,2]+X2[2,1])/nrow(OJ_test),", and",(X8[1,2]+X8[2,1])/nrow(OJ_test),", respectively, whereas the unpruned tree has error rate",(X[1,2]+X[2,1])/nrow(OJ_test),". Pruning is not very useful in this example."))
 ```
 
 **10. We now use boosting to predict Salary in the Hitters data set.**
