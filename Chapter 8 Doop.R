@@ -69,7 +69,7 @@ tree.boston_train <- tree(medv~., Boston, subset=train)
 summary(tree.boston_train) #lstat measures percentage of individuals with lower socioeconomic status #only 3 variables used #in regression, deviance is sum of squared errors
 #plot trained tree
 plot(tree.boston_train)
-text(tree.boston_train)
+text(tree.boston_train, pretty=0)
 #see if pruning will be effective
 cv.boston_train <- cv.tree(tree.boston_train)
 plot(cv.boston_train$size, cv.boston_train$dev, type='b') #wants most complex tree
@@ -82,8 +82,8 @@ tree.boston_pred <- predict(tree.boston_train, newdata=Boston[-train,])
 boston_test <- Boston[-train,"medv"]
 plot(tree.boston_pred,boston_test)
 abline(0,1)
-mean((tree.boston_pred-boston_test)^2)
-print("Test MSE is 25.05. Root MSE is about 5.005, indicating this model leads to test predictions within around $5,005 of the true median home value for suburb.")
+MSE <- mean((tree.boston_pred-boston_test)^2)
+print(paste("Test MSE is",MSE,". Root MSE is",sqrt(MSE),", indicating this model leads to test predictions within around $5,005 of the true median home value for suburb."))
 
 #Bagging and Random Forest
 
