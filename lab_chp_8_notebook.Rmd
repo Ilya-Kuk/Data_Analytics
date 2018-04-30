@@ -11,7 +11,7 @@ library(ISLR)
 library(MASS)
 library(randomForest)
 library(gbm)
-library(plotly)
+library(ggplot2)
 ```
 
 **7. In the lab, we applied random forests to the Boston data using mtry=6
@@ -77,7 +77,26 @@ Analysis[1:10,]
 print("Heatmap of MSE based on number of trees and number of variables:")
 ```
 ```{r}
-plot_ly(x=r_z,y=c_z,z=Z,colors = colorRamp(c("blue", "orange")),type='heatmap')
+Analysis <- data.frame(Analysis)
+attach(Analysis)
+nTrees_temp <- as.numeric(levels(nTrees))[nTrees]
+Analysis$nTrees <- nTrees_temp
+nVariables_temp <- as.numeric(levels(nVariables))[nVariables]
+Analysis$nVariables <- nVariables_temp
+attach(Analysis)
+ggplot(Analysis, aes(x=nTrees, y=nVariables )) +
+  geom_tile(aes(fill = MSE), color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  xlab("Number of Trees") +
+  ylab("Number of Variables Sampled") +
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 12),
+        plot.title = element_text(size=16),
+        axis.title=element_text(size=14,face="bold"),
+        axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(fill = "Mean Squared Error") +
+  scale_x_continuous() +
+  scale_y_continuous()
 ```
 ```{r,echo=FALSE}
 print("By the looks of it, the more influential factor for a good prediction is the number of trees, the sweet spot is around 300-500.")
