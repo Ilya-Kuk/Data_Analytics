@@ -63,12 +63,12 @@ for(v in 1:12){
 }
 #Removing first (empty) row of Matrix
 Analysis <- Analysis[-1,]
-#Ordering Matrix based on error rate
 ```
 ```{r,echo=False}
 print("Top 10 random forests based on MSE:")
 ```
 ```{r}
+#Ordering Matrix based on error rate
 Analysis <- Analysis[ order(Analysis[,3],decreasing=FALSE), ]
 Analysis[1:10,]
 ```
@@ -95,8 +95,8 @@ ggplot(Analysis, aes(x=nTrees, y=nVariables )) +
         axis.title=element_text(size=14,face="bold"),
         axis.text.x = element_text(angle = 90, hjust = 1)) +
   labs(fill = "Mean Squared Error") +
-  scale_x_continuous() +
-  scale_y_continuous()
+  scale_x_discrete() +
+  scale_y_discrete()
 ```
 ```{r,echo=FALSE}
 print("By the looks of it, the more influential factor for a good prediction is the number of trees, the sweet spot is around 300-500.")
